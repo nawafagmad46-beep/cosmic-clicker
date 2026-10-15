@@ -1,0 +1,1572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cosmic Clicker Deluxe</title>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #030407;
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+            background-image: radial-gradient(circle at 50% 30%, #0d1b3a 0%, #030407 100%);
+        }
+
+        .shake { animation: shake 0.15s ease-in-out; }
+        @keyframes shake {
+            0% { transform: translate(0, 0); }
+            25% { transform: translate(-4px, 4px); }
+            50% { transform: translate(4px, -4px); }
+            75% { transform: translate(-2px, -2px); }
+            100% { transform: translate(0, 0); }
+        }
+
+        .game-container {
+            width: 100%;
+            max-width: 1420px;
+            background: rgba(10, 14, 26, 0.9);
+            border: 1px solid rgba(0, 255, 204, 0.25);
+            border-radius: 28px;
+            padding: 30px;
+            box-shadow: 0 0 70px rgba(0, 255, 204, 0.08), inset 0 0 40px rgba(0, 255, 204, 0.04);
+            backdrop-filter: blur(20px);
+            display: grid;
+            grid-template-columns: 380px 1fr 360px;
+            gap: 25px;
+            position: relative;
+            z-index: 2;
+        }
+
+        @media (max-width: 1100px) {
+            .game-container { grid-template-columns: 1fr; }
+        }
+
+        #particle-canvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        #youtube-audio-container {
+            position: absolute;
+            left: -9999px;
+            top: -9999px;
+        }
+
+        .audio-controls-panel {
+            width: 100%;
+            background: rgba(15, 20, 35, 0.75);
+            border: 1px solid rgba(0, 255, 204, 0.15);
+            border-radius: 16px;
+            padding: 18px;
+            margin-top: 20px;
+            box-shadow: inset 0 0 15px rgba(0, 255, 204, 0.03);
+        }
+
+        .audio-controls-panel h4 {
+            margin: 0 0 12px 0;
+            font-size: 0.85rem;
+            color: #00ffcc;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .setting-group {
+            margin-bottom: 12px;
+        }
+
+        .setting-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .setting-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: #8a8fbf;
+            margin-bottom: 5px;
+        }
+
+        .setting-group input[type="range"] {
+            width: 100%;
+            accent-color: #00ffcc;
+            cursor: pointer;
+            height: 6px;
+            background: #1a2238;
+            border-radius: 3px;
+        }
+
+        #profile-modal {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: rgba(3, 4, 7, 0.94);
+            backdrop-filter: blur(12px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        }
+
+        .modal-card {
+            background: #101524;
+            border: 1px solid rgba(0, 255, 204, 0.5);
+            border-radius: 22px;
+            padding: 40px;
+            width: 440px;
+            text-align: center;
+            box-shadow: 0 0 50px rgba(0, 255, 204, 0.25);
+        }
+
+        .modal-card h2 { margin-top: 0; color: #00ffcc; font-size: 1.6rem; }
+
+        .modal-card input {
+            width: 100%;
+            padding: 14px;
+            background: #060810;
+            border: 1px solid rgba(0, 255, 204, 0.3);
+            border-radius: 12px;
+            color: #fff;
+            font-size: 1.05rem;
+            margin: 15px 0;
+            outline: none;
+            text-align: center;
+            transition: 0.2s;
+        }
+
+        .modal-card input:focus { border-color: #00ffcc; box-shadow: 0 0 15px rgba(0, 255, 204, 0.4); }
+
+        .pfp-selector {
+            display: flex;
+            justify-content: center;
+            gap: 14px;
+            margin-bottom: 22px;
+        }
+
+        .pfp-option {
+            width: 52px; height: 52px;
+            border-radius: 50%;
+            border: 2px solid #222b45;
+            background: #060810;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .pfp-option.selected {
+            border-color: #00ffcc;
+            box-shadow: 0 0 18px rgba(0, 255, 204, 0.6);
+            transform: scale(1.12);
+        }
+
+        .modal-btn {
+            background: linear-gradient(135deg, #00ffcc, #00bfff);
+            color: #030407;
+            border: none;
+            padding: 14px 20px;
+            font-weight: 800;
+            font-size: 1.05rem;
+            border-radius: 12px;
+            cursor: pointer;
+            width: 100%;
+            transition: 0.2s;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.35);
+        }
+
+        .modal-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 30px rgba(0, 255, 204, 0.6);
+        }
+
+        .left-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border-right: 1px solid rgba(255, 255, 255, 0.06);
+            padding-right: 20px;
+        }
+
+        @media (max-width: 1100px) {
+            .left-column {
+                border-right: none;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+                padding-right: 0; padding-bottom: 20px;
+            }
+        }
+
+        .player-profile {
+            width: 100%;
+            background: rgba(15, 20, 35, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 16px;
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .profile-info { display: flex; align-items: center; gap: 14px; }
+
+        .profile-avatar {
+            width: 45px; height: 45px;
+            border-radius: 50%;
+            background: #060810;
+            border: 2px solid #00ffcc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.4rem;
+            box-shadow: 0 0 10px rgba(0,255,204,0.3);
+        }
+
+        .profile-text h4 { margin: 0; font-size: 1rem; color: #fff; font-weight: 700; }
+        .profile-text span { font-size: 0.75rem; color: #8a8fbf; }
+
+        .edit-profile-btn {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #8a8fbf;
+            padding: 6px 14px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.78rem;
+            font-weight: 600;
+            transition: 0.2s;
+        }
+
+        .edit-profile-btn:hover { border-color: #00ffcc; color: #00ffcc; background: rgba(0,255,204,0.06); }
+
+        .stats-display { text-align: center; margin-bottom: 10px; }
+
+        .stats-display h1 {
+            margin: 0;
+            font-size: 3.2rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #00ffcc, #00bfff, #7000ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 20px rgba(0, 255, 204, 0.5));
+            letter-spacing: 1px;
+        }
+
+        .sub-stats { color: #8a8fbf; font-size: 0.9rem; margin-top: 6px; font-weight: 600; }
+
+        .click-btn-wrapper {
+            position: relative;
+            margin: 25px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #click-btn {
+            width: 220px; height: 220px;
+            background: radial-gradient(circle, rgba(13,27,58,0.95) 0%, rgba(4,7,17,0.98) 100%);
+            border: 3px solid #00ffcc;
+            border-radius: 50%;
+            cursor: pointer;
+            outline: none;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease;
+            box-shadow: 0 0 50px rgba(0, 255, 204, 0.35), inset 0 0 35px rgba(0, 255, 204, 0.3);
+            z-index: 2;
+        }
+
+        #click-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 70px rgba(0, 255, 204, 0.6), inset 0 0 50px rgba(0, 255, 204, 0.5);
+            border-color: #33ffdd;
+        }
+
+        #click-btn:active {
+            transform: scale(0.95);
+        }
+
+        #click-btn span {
+            color: #00ffcc;
+            font-weight: 900;
+            font-size: 1.45rem;
+            letter-spacing: 3px;
+            text-shadow: 0 0 15px rgba(0, 255, 204, 0.8);
+        }
+
+        #click-btn small {
+            color: #8a8fbf;
+            font-size: 0.75rem;
+            margin-top: 6px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 700;
+        }
+
+        .hud-ring-1 {
+            position: absolute;
+            top: -12px; left: -12px; right: -12px; bottom: -12px;
+            border: 2px dashed rgba(0, 255, 204, 0.45);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: spinHudSlow 20s linear infinite;
+        }
+
+        .hud-ring-2 {
+            position: absolute;
+            top: -22px; left: -22px; right: -22px; bottom: -22px;
+            border: 1px solid rgba(0, 191, 255, 0.25);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: spinHudReverse 30s linear infinite;
+        }
+
+        @keyframes spinHudSlow {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes spinHudReverse {
+            0% { transform: rotate(360deg); }
+            100% { transform: rotate(0deg); }
+        }
+
+        .float-text {
+            position: absolute;
+            color: #00ffcc;
+            font-weight: 900;
+            font-size: 1.4rem;
+            pointer-events: none;
+            animation: floatUp 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+            text-shadow: 0 0 12px #00ffcc;
+            z-index: 100;
+        }
+
+        .float-text.crit {
+            color: #ffd700;
+            font-size: 2rem;
+            text-shadow: 0 0 18px #ffd700;
+        }
+
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-55px) scale(1.35); }
+        }
+
+        .controls { margin-top: 15px; display: flex; gap: 12px; width: 100%; }
+
+        .control-btn {
+            flex: 1;
+            background: rgba(15, 20, 35, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #8a8fbf;
+            padding: 10px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.88rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .control-btn:hover { border-color: #00ffcc; color: #ffffff; background: rgba(0,255,204,0.06); }
+        .control-btn.reset:hover { border-color: #ff4a4a; color: #ff4a4a; background: rgba(255,74,74,0.06); }
+
+        .middle-column {
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid rgba(255, 255, 255, 0.06);
+            padding-right: 20px;
+        }
+
+        @media (max-width: 1100px) {
+            .middle-column {
+                border-right: none;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+                padding-right: 0; padding-bottom: 20px;
+            }
+        }
+
+        /* --- NAVIGATION TABS --- */
+        .tab-navigation {
+            display: flex;
+            gap: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 12px;
+            margin-bottom: 18px;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .tab-btn-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .tab-btn {
+            background: rgba(15, 20, 35, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #8a8fbf;
+            padding: 8px 18px;
+            font-size: 0.95rem;
+            font-weight: 800;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, rgba(0, 255, 204, 0.2), rgba(0, 191, 255, 0.2));
+            border-color: #00ffcc;
+            color: #00ffcc;
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.2);
+        }
+
+        .buy-mode-group {
+            display: flex;
+            background: rgba(15, 20, 35, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            padding: 3px;
+            gap: 4px;
+        }
+
+        .mode-btn {
+            background: transparent;
+            color: #8a8fbf;
+            border: none;
+            padding: 5px 12px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mode-btn.active {
+            background: #00ffcc;
+            color: #030407;
+            box-shadow: 0 0 10px rgba(0, 255, 204, 0.5);
+        }
+
+        .shop-section, .milestones-section {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            max-height: 560px;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+
+        .shop-section::-webkit-scrollbar, .milestones-section::-webkit-scrollbar { width: 6px; }
+        .shop-section::-webkit-scrollbar-thumb, .milestones-section::-webkit-scrollbar-thumb { background: rgba(0, 255, 204, 0.3); border-radius: 4px; }
+
+        .upgrade-card {
+            background: linear-gradient(135deg, rgba(16, 22, 38, 0.75) 0%, rgba(10, 14, 26, 0.9) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 18px;
+            padding: 18px;
+            min-height: 85px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.25s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .upgrade-card:hover {
+            border-color: rgba(0, 255, 204, 0.5);
+            background: linear-gradient(135deg, rgba(22, 30, 52, 0.85) 0%, rgba(12, 17, 32, 0.95) 100%);
+            box-shadow: 0 0 22px rgba(0, 255, 204, 0.18);
+            transform: translateY(-2px);
+        }
+
+        .up-left-group {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex: 1;
+            padding-bottom: 4px;
+        }
+
+        .up-icon-box {
+            width: 48px; height: 48px;
+            border-radius: 14px;
+            background: rgba(0, 255, 204, 0.05);
+            border: 1px solid rgba(0, 255, 204, 0.2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .upgrade-info h3 {
+            margin: 0 0 4px 0;
+            font-size: 1.05rem;
+            color: #ffffff;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .up-stats-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.8rem;
+            margin-bottom: 3px;
+        }
+
+        .badge-power {
+            color: #00ffcc;
+            background: rgba(0, 255, 204, 0.1);
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-weight: 700;
+        }
+
+        .badge-owned {
+            color: #8a8fbf;
+            font-weight: 600;
+        }
+
+        .up-cost-tag {
+            color: #ffd700;
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+
+        .upgrade-btn {
+            background: linear-gradient(135deg, #00ffcc, #00bfff);
+            color: #030407;
+            border: none;
+            border-radius: 10px;
+            padding: 8px 16px;
+            font-weight: 800;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            z-index: 2;
+            box-shadow: 0 0 12px rgba(0, 255, 204, 0.25);
+            min-width: 90px;
+            text-align: center;
+        }
+
+        .upgrade-btn:hover:not(:disabled) {
+            box-shadow: 0 0 18px rgba(0, 255, 204, 0.6);
+            transform: scale(1.05);
+        }
+
+        .upgrade-btn:disabled {
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.2);
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .card-progress {
+            position: absolute;
+            bottom: 0; left: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #00ffcc, #00bfff);
+            width: 0%;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px rgba(0, 255, 204, 0.8);
+        }
+
+        /* --- FIXED CLEAN MILESTONE CARDS --- */
+        .milestone-card {
+            background: linear-gradient(135deg, rgba(16, 22, 38, 0.75) 0%, rgba(10, 14, 26, 0.9) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 18px;
+            padding: 16px 20px;
+            min-height: 105px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+            transition: 0.2s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .milestone-card.unlocked {
+            border-color: rgba(0, 255, 204, 0.5);
+            background: linear-gradient(135deg, rgba(0, 255, 204, 0.06) 0%, rgba(15, 20, 35, 0.85) 100%);
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.12);
+        }
+
+        .ms-top-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .ms-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .ms-icon {
+            width: 48px; height: 48px;
+            border-radius: 14px;
+            background: rgba(0, 255, 204, 0.05);
+            border: 1px solid rgba(0, 255, 204, 0.2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.4rem;
+            flex-shrink: 0;
+        }
+
+        .milestone-card.unlocked .ms-icon {
+            border-color: #00ffcc;
+            box-shadow: 0 0 12px rgba(0, 255, 204, 0.3);
+        }
+
+        .ms-details h4 { margin: 0 0 4px 0; font-size: 1.05rem; color: #fff; font-weight: 700; line-height: 1.2; }
+        .ms-details p { margin: 0; font-size: 0.82rem; color: #8a8fbf; }
+
+        .ms-badge {
+            font-size: 0.75rem;
+            font-weight: 800;
+            padding: 6px 14px;
+            border-radius: 9px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #70779b;
+            white-space: nowrap;
+        }
+
+        .milestone-card.unlocked .ms-badge {
+            background: #00ffcc;
+            color: #030407;
+            box-shadow: 0 0 12px rgba(0, 255, 204, 0.4);
+        }
+
+        .ms-progress-container {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .ms-progress-text {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.78rem;
+            color: #8a8fbf;
+            font-weight: 600;
+        }
+
+        .ms-progress-bar-bg {
+            width: 100%;
+            height: 6px;
+            background: #060810;
+            border-radius: 3px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .ms-progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ffcc, #00bfff);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 8px rgba(0, 255, 204, 0.5);
+        }
+
+        .milestone-card.unlocked .ms-progress-bar-fill {
+            background: #00ffcc;
+        }
+
+        .right-column { display: flex; flex-direction: column; }
+
+        .leaderboard-header {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            padding-bottom: 12px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .leaderboard-header h3 { margin: 0; font-size: 1.35rem; color: #ffd700; font-weight: 700; }
+
+        .leaderboard-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 540px;
+            overflow-y: auto;
+            padding-right: 6px;
+        }
+
+        .leaderboard-list::-webkit-scrollbar { width: 5px; }
+        .leaderboard-list::-webkit-scrollbar-thumb { background: rgba(255, 215, 0, 0.3); border-radius: 3px; }
+
+        .lb-card {
+            background: rgba(15, 20, 35, 0.55);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 14px;
+            padding: 13px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: 0.2s;
+        }
+
+        .lb-card.is-user {
+            border-color: rgba(0, 255, 204, 0.6);
+            background: rgba(0, 255, 204, 0.05);
+        }
+
+        .lb-rank {
+            font-weight: bold;
+            font-size: 0.92rem;
+            width: 32px;
+            color: #8a8fbf;
+        }
+
+        .lb-card:nth-child(1) .lb-rank { color: #ffd700; }
+        .lb-card:nth-child(2) .lb-rank { color: #c0c0c0; }
+        .lb-card:nth-child(3) .lb-rank { color: #cd7f32; }
+
+        .lb-player-info { display: flex; align-items: center; gap: 14px; flex: 1; }
+
+        .lb-avatar {
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            background: #060810;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.1rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .lb-details h4 { margin: 0; font-size: 0.9rem; color: #fff; }
+        .lb-score { font-weight: bold; font-size: 0.9rem; color: #00ffcc; }
+    </style>
+</head>
+<body id="body">
+
+    <div id="youtube-audio-container">
+        <iframe id="yt-player" width="200" height="200" src="https://www.youtube.com/embed/_4B5Hzuvy_0?enablejsapi=1&autoplay=1&loop=1&playlist=_4B5Hzuvy_0" frameborder="0"></iframe>
+    </div>
+
+    <!-- Profile Setup Modal -->
+    <div id="profile-modal" style="display: none;">
+        <div class="modal-card">
+            <h2>Welcome to Cosmic Clicker</h2>
+            <p style="color: #8a8fbf; font-size: 0.88rem;">Pick your custom name & avatar to compete live on the Global Leaderboard!</p>
+            
+            <div style="text-align: left; font-size: 0.82rem; color: #8a8fbf; margin-bottom: 6px;">Choose Avatar:</div>
+            <div class="pfp-selector">
+                <div class="pfp-option selected" onclick="selectAvatar('🚀', this)">🚀</div>
+                <div class="pfp-option" onclick="selectAvatar('👽', this)">👽</div>
+                <div class="pfp-option" onclick="selectAvatar('🛸', this)">🛸</div>
+                <div class="pfp-option" onclick="selectAvatar('⭐', this)">⭐</div>
+                <div class="pfp-option" onclick="selectAvatar('👾', this)">👾</div>
+            </div>
+
+            <div style="text-align: left; font-size: 0.82rem; color: #8a8fbf; margin-bottom: 6px;">Enter Username (SFW):</div>
+            <input type="text" id="username-input" placeholder="e.g. StarLord" maxlength="15">
+            
+            <button class="modal-btn" onclick="saveProfile()">Start Playing</button>
+        </div>
+    </div>
+
+    <canvas id="particle-canvas"></canvas>
+
+    <div class="game-container" id="game-container">
+        
+        <div class="left-column">
+            <div class="player-profile">
+                <div class="profile-info">
+                    <div class="profile-avatar" id="display-avatar">🚀</div>
+                    <div class="profile-text">
+                        <h4 id="display-username">Explorer</h4>
+                        <span id="display-rank">Live Rankings</span>
+                    </div>
+                </div>
+                <button class="edit-profile-btn" onclick="openProfileModal()">Edit</button>
+            </div>
+
+            <div class="stats-display">
+                <h1 id="score">0</h1>
+                <div class="sub-stats">
+                    <span id="cps">0</span> Stardust / sec &bull; <span id="cpc">1</span> per click
+                </div>
+            </div>
+
+            <div class="click-btn-wrapper" id="btn-wrapper">
+                <div class="hud-ring-2"></div>
+                <div class="hud-ring-1"></div>
+                <button id="click-btn" onclick="harvestStardust(event)">
+                    <span>HARVEST</span>
+                    <small>STARDUST</small>
+                </button>
+            </div>
+
+            <div class="controls">
+                <button class="control-btn" onclick="saveGame()">Save</button>
+                <button class="control-btn reset" onclick="resetGame()">Reset</button>
+            </div>
+
+            <div class="audio-controls-panel">
+                <h4>🔊 Audio Controls</h4>
+                <div class="setting-group">
+                    <label>Master Volume: <span id="vol-master-val">100%</span></label>
+                    <input type="range" id="master-vol" min="0" max="100" value="100" oninput="updateVolumes()">
+                </div>
+                <div class="setting-group">
+                    <label>SFX Volume: <span id="vol-sfx-val">100%</span></label>
+                    <input type="range" id="sfx-vol" min="0" max="100" value="100" oninput="updateVolumes()">
+                </div>
+            </div>
+        </div>
+
+        <div class="middle-column">
+            <!-- TAB NAVIGATION -->
+            <div class="tab-navigation">
+                <div class="tab-btn-group">
+                    <button class="tab-btn active" id="tab-upgrades" onclick="switchTab('upgrades')">🛒 Upgrades</button>
+                    <button class="tab-btn" id="tab-milestones" onclick="switchTab('milestones')">🏆 Milestones (<span id="ms-unlocked-count">0</span>/30)</button>
+                </div>
+                
+                <div class="buy-mode-group" id="buy-mode-container">
+                    <button class="mode-btn active" id="mode-1" onclick="setBuyMode(1)">1x</button>
+                    <button class="mode-btn" id="mode-10" onclick="setBuyMode(10)">10x</button>
+                    <button class="mode-btn" id="mode-100" onclick="setBuyMode(100)">100x</button>
+                    <button class="mode-btn" id="mode-max" onclick="setBuyMode('max')">Max</button>
+                </div>
+            </div>
+
+            <!-- UPGRADES TAB CONTENT -->
+            <div class="shop-section" id="shop-tab">
+                <!-- Upgrade 0 -->
+                <div class="upgrade-card">
+                    <div class="up-left-group">
+                        <div class="up-icon-box">⚡</div>
+                        <div class="upgrade-info">
+                            <h3>Laser Beam</h3>
+                            <div class="up-stats-row">
+                                <span class="badge-power">+1 /click</span>
+                                <span class="up-cost-tag">✨ <span id="u0-cost">15</span></span>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="upgrade-btn" id="buy-u0" onclick="buyUpgrade(0)">Buy <span id="u0-qty">1x</span></button>
+                    <div class="card-progress" id="p0"></div>
+                </div>
+
+                <!-- Upgrade 1 -->
+                <div class="upgrade-card">
+                    <div class="up-left-group">
+                        <div class="up-icon-box">🤖</div>
+                        <div class="upgrade-info">
+                            <h3>Stardust Drone</h3>
+                            <div class="up-stats-row">
+                                <span class="badge-power">+1 /sec</span>
+                                <span class="badge-owned">Owned: <span id="u1-count">0</span></span>
+                                <span class="up-cost-tag">✨ <span id="u1-cost">50</span></span>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="upgrade-btn" id="buy-u1" onclick="buyUpgrade(1)">Buy <span id="u1-qty">1x</span></button>
+                    <div class="card-progress" id="p1"></div>
+                </div>
+
+                <!-- Upgrade 2 -->
+                <div class="upgrade-card">
+                    <div class="up-left-group">
+                        <div class="up-icon-box">☀️</div>
+                        <div class="upgrade-info">
+                            <h3>Solar Harvester</h3>
+                            <div class="up-stats-row">
+                                <span class="badge-power">+5 /sec</span>
+                                <span class="badge-owned">Owned: <span id="u2-count">0</span></span>
+                                <span class="up-cost-tag">✨ <span id="u2-cost">250</span></span>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="upgrade-btn" id="buy-u2" onclick="buyUpgrade(2)">Buy <span id="u2-qty">1x</span></button>
+                    <div class="card-progress" id="p2"></div>
+                </div>
+
+                <!-- Upgrade 3 -->
+                <div class="upgrade-card">
+                    <div class="up-left-group">
+                        <div class="up-icon-box">☄️</div>
+                        <div class="upgrade-info">
+                            <h3>Asteroid Miner</h3>
+                            <div class="up-stats-row">
+                                <span class="badge-power">+15 /sec</span>
+                                <span class="badge-owned">Owned: <span id="u3-count">0</span></span>
+                                <span class="up-cost-tag">✨ <span id="u3-cost">1200</span></span>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="upgrade-btn" id="buy-u3" onclick="buyUpgrade(3)">Buy <span id="u3-qty">1x</span></button>
+                    <div class="card-progress" id="p3"></div>
+                </div>
+
+                <!-- Upgrade 4 -->
+                <div class="upgrade-card">
+                    <div class="up-left-group">
+                        <div class="up-icon-box">🚀</div>
+                        <div class="upgrade-info">
+                            <h3>Ion Thruster</h3>
+                            <div class="up-stats-row">
+                                <span class="badge-power">+50 /sec</span>
+                                <span class="badge-owned">Owned: <span id="u4-count">0</span></span>
+                                <span class="up-cost-tag">✨ <span id="u4-cost">5000</span></span>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="upgrade-btn" id="buy-u4" onclick="buyUpgrade(4)">Buy <span id="u4-qty">1x</span></button>
+                    <div class="card-progress" id="p4"></div>
+                </div>
+
+                <!-- Upgrade 5 -->
+                <div class="upgrade-card">
+                    <div class="up-left-group">
+                        <div class="up-icon-box">🌌</div>
+                        <div class="upgrade-info">
+                            <h3>Nebula Collector</h3>
+                            <div class="up-stats-row">
+                                <span class="badge-power">+200 /sec</span>
+                                <span class="badge-owned">Owned: <span id="u5-count">0</span></span>
+                                <span class="up-cost-tag">✨ <span id="u5-cost">22000</span></span>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="upgrade-btn" id="buy-u5" onclick="buyUpgrade(5)">Buy <span id="u5-qty">1x</span></button>
+                    <div class="card-progress" id="p5"></div>
+                </div>
+
+                <!-- Upgrade 6 -->
+                <div class="upgrade-card">
+                    <div class="up-left-group">
+                        <div class="up-icon-box">⚛️</div>
+                        <div class="upgrade-info">
+                            <h3>Quantum Siphon</h3>
+                            <div class="up-stats-row">
+                                <span class="badge-power">+1,000 /sec</span>
+                                <span class="badge-owned">Owned: <span id="u6-count">0</span></span>
+                                <span class="up-cost-tag">✨ <span id="u6-cost">100000</span></span>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="upgrade-btn" id="buy-u6" onclick="buyUpgrade(6)">Buy <span id="u6-qty">1x</span></button>
+                    <div class="card-progress" id="p6"></div>
+                </div>
+
+                <!-- Upgrade 7 -->
+                <div class="upgrade-card">
+                    <div class="up-left-group">
+                        <div class="up-icon-box">🕳️</div>
+                        <div class="upgrade-info">
+                            <h3>Black Hole Rig</h3>
+                            <div class="up-stats-row">
+                                <span class="badge-power">+5,000 /sec</span>
+                                <span class="badge-owned">Owned: <span id="u7-count">0</span></span>
+                                <span class="up-cost-tag">✨ <span id="u7-cost">450000</span></span>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="upgrade-btn" id="buy-u7" onclick="buyUpgrade(7)">Buy <span id="u7-qty">1x</span></button>
+                    <div class="card-progress" id="p7"></div>
+                </div>
+
+                <!-- Upgrade 8 -->
+                <div class="upgrade-card">
+                    <div class="up-left-group">
+                        <div class="up-icon-box">🪐</div>
+                        <div class="upgrade-info">
+                            <h3>Galactic Engine</h3>
+                            <div class="up-stats-row">
+                                <span class="badge-power">+20,000 /sec</span>
+                                <span class="badge-owned">Owned: <span id="u8-count">0</span></span>
+                                <span class="up-cost-tag">✨ <span id="u8-cost">2000000</span></span>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="upgrade-btn" id="buy-u8" onclick="buyUpgrade(8)">Buy <span id="u8-qty">1x</span></button>
+                    <div class="card-progress" id="p8"></div>
+                </div>
+
+                <!-- Upgrade 9 -->
+                <div class="upgrade-card">
+                    <div class="up-left-group">
+                        <div class="up-icon-box">🔮</div>
+                        <div class="upgrade-info">
+                            <h3>Reality Bender</h3>
+                            <div class="up-stats-row">
+                                <span class="badge-power">+100,000 /sec</span>
+                                <span class="badge-owned">Owned: <span id="u9-count">0</span></span>
+                                <span class="up-cost-tag">✨ <span id="u9-cost">10000000</span></span>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="upgrade-btn" id="buy-u9" onclick="buyUpgrade(9)">Buy <span id="u9-qty">1x</span></button>
+                    <div class="card-progress" id="p9"></div>
+                </div>
+            </div>
+
+            <!-- MILESTONES TAB CONTENT (30 ACHIEVEMENTS) -->
+            <div class="milestones-section" id="milestones-tab" style="display: none;">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+
+        <div class="right-column">
+            <div class="leaderboard-header">
+                <h3>🏆 Live Global Players</h3>
+            </div>
+
+            <div class="leaderboard-list" id="leaderboard-list">
+                <!-- Live Firebase Leaderboard -->
+            </div>
+        </div>
+
+    </div>
+
+    <!-- YouTube IFrame API Script -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script>
+        let ytPlayer;
+        let masterVol = 100;
+        let sfxVol = 100;
+
+        function onYouTubeIframeAPIReady() {
+            ytPlayer = new YT.Player('yt-player', {
+                events: {
+                    'onReady': (event) => {
+                        event.target.setVolume(masterVol);
+                        event.target.playVideo();
+                    }
+                }
+            });
+        }
+
+        function updateVolumes() {
+            masterVol = document.getElementById('master-vol').value;
+            sfxVol = document.getElementById('sfx-vol').value;
+
+            document.getElementById('vol-master-val').textContent = `${masterVol}%`;
+            document.getElementById('vol-sfx-val').textContent = `${sfxVol}%`;
+
+            if (ytPlayer && ytPlayer.setVolume) {
+                ytPlayer.setVolume(masterVol);
+            }
+        }
+
+        const firebaseConfig = {
+            apiKey: "YOUR_FIREBASE_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        if (firebaseConfig.apiKey !== "YOUR_FIREBASE_API_KEY") {
+            firebase.initializeApp(firebaseConfig);
+        }
+
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSound(type) {
+            let finalVol = (masterVol / 100) * (sfxVol / 100);
+            if (finalVol <= 0) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'click') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(320, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(650, audioCtx.currentTime + 0.05);
+                gain.gain.setValueAtTime(0.15 * finalVol, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.05);
+            } else if (type === 'crit') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(500, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1300, audioCtx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.25 * finalVol, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+            } else if (type === 'buy') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(450, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(850, audioCtx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.1 * finalVol, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+            }
+        }
+
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function spawnParticles(x, y, color, count = 16) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 10,
+                    vy: (Math.random() - 0.5) * 10,
+                    size: Math.random() * 5 + 2,
+                    color: color,
+                    alpha: 1,
+                    life: 0.025
+                });
+            }
+        }
+
+        function renderParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach((p, index) => {
+                p.x += p.vx; p.y += p.vy;
+                p.alpha -= p.life;
+                ctx.globalAlpha = Math.max(0, p.alpha);
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+                if (p.alpha <= 0) particles.splice(index, 1);
+            });
+            requestAnimationFrame(renderParticles);
+        }
+        renderParticles();
+
+        let gameData = {
+            playerId: 'user_' + Math.random().toString(36).substr(2, 9),
+            username: 'Explorer',
+            avatar: '🚀',
+            score: 0,
+            totalEarned: 0,
+            totalClicks: 0,
+            buyMode: 1,
+            unlockedMilestones: [],
+            upgrades: [
+                { count: 0, cost: 15, baseCost: 15, power: 1, isClick: true, mult: 1.5 },
+                { count: 0, cost: 50, baseCost: 50, power: 1, isClick: false, mult: 1.5 },
+                { count: 0, cost: 250, baseCost: 250, power: 5, isClick: false, mult: 1.5 },
+                { count: 0, cost: 1200, baseCost: 1200, power: 15, isClick: false, mult: 1.5 },
+                { count: 0, cost: 5000, baseCost: 5000, power: 50, isClick: false, mult: 1.5 },
+                { count: 0, cost: 22000, baseCost: 22000, power: 200, isClick: false, mult: 1.5 },
+                { count: 0, cost: 100000, baseCost: 100000, power: 1000, isClick: false, mult: 1.5 },
+                { count: 0, cost: 450000, baseCost: 450000, power: 5000, isClick: false, mult: 1.5 },
+                { count: 0, cost: 2000000, baseCost: 2000000, power: 20000, isClick: false, mult: 1.5 },
+                { count: 0, cost: 10000000, baseCost: 10000000, power: 100000, isClick: false, mult: 1.6 }
+            ]
+        };
+
+        // --- 30 DEFINED MILESTONES WITH PROGRESS METRICS ---
+        const MILESTONES = [
+            { id: 'm1', icon: '👆', name: 'First Touch', desc: 'Perform your first stardust click', current: () => gameData.totalClicks, target: 1, unit: 'Clicks' },
+            { id: 'm2', icon: '✨', name: 'Dust Collector', desc: 'Earn 100 total Stardust', current: () => Math.floor(gameData.totalEarned), target: 100, unit: 'Stardust' },
+            { id: 'm3', icon: '🛒', name: 'First Upgrade', desc: 'Purchase your first upgrade', current: () => getTotalUpgrades(), target: 1, unit: 'Upgrades' },
+            { id: 'm4', icon: '⚡', name: 'Laser Beam', desc: 'Buy a Laser Beam upgrade', current: () => gameData.upgrades[0].count, target: 1, unit: 'Owned' },
+            { id: 'm5', icon: '🤖', name: 'Automation', desc: 'Own 1 Stardust Drone', current: () => gameData.upgrades[1].count, target: 1, unit: 'Owned' },
+            { id: 'm6', icon: '🌟', name: 'Stardust Hoarder', desc: 'Earn 1,000 total Stardust', current: () => Math.floor(gameData.totalEarned), target: 1000, unit: 'Stardust' },
+            { id: 'm7', icon: '🎯', name: 'Clicking Enthusiast', desc: 'Click 100 times', current: () => gameData.totalClicks, target: 100, unit: 'Clicks' },
+            { id: 'm8', icon: '☀️', name: 'Solar Power', desc: 'Own 1 Solar Harvester', current: () => gameData.upgrades[2].count, target: 1, unit: 'Owned' },
+            { id: 'm9', icon: '📈', name: 'Passive Stream', desc: 'Reach 10 Stardust / sec', current: () => getCPS(), target: 10, unit: '/sec' },
+            { id: 'm10', icon: '☄️', name: 'Deep Space Miner', desc: 'Own 1 Asteroid Miner', current: () => gameData.upgrades[3].count, target: 1, unit: 'Owned' },
+            { id: 'm11', icon: '🚀', name: 'Speed of Light', desc: 'Own 1 Ion Thruster', current: () => gameData.upgrades[4].count, target: 1, unit: 'Owned' },
+            { id: 'm12', icon: '💎', name: 'Cosmic Millionaire', desc: 'Earn 100,000 total Stardust', current: () => Math.floor(gameData.totalEarned), target: 100000, unit: 'Stardust' },
+            { id: 'm13', icon: '🌌', name: 'Nebula Walker', desc: 'Own 1 Nebula Collector', current: () => gameData.upgrades[5].count, target: 1, unit: 'Owned' },
+            { id: 'm14', icon: '⚡', name: 'Overclocked Clicker', desc: 'Reach +25 per Click', current: () => getClickPower(), target: 25, unit: 'Power' },
+            { id: 'm15', icon: '🤖', name: 'Drone Army', desc: 'Own 10 Stardust Drones', current: () => gameData.upgrades[1].count, target: 10, unit: 'Owned' },
+            { id: 'm16', icon: '⚛️', name: 'Quantum Energy', desc: 'Own 1 Quantum Siphon', current: () => gameData.upgrades[6].count, target: 1, unit: 'Owned' },
+            { id: 'm17', icon: '👆', name: 'Click Marathon', desc: 'Click 500 times', current: () => gameData.totalClicks, target: 500, unit: 'Clicks' },
+            { id: 'm18', icon: '🕳️', name: 'Event Horizon', desc: 'Own 1 Black Hole Rig', current: () => gameData.upgrades[7].count, target: 1, unit: 'Owned' },
+            { id: 'm19', icon: '🪐', name: 'Galactic Empire', desc: 'Own 1 Galactic Engine', current: () => gameData.upgrades[8].count, target: 1, unit: 'Owned' },
+            { id: 'm20', icon: '⚡', name: 'Hyper Clicker', desc: 'Reach +100 per Click', current: () => getClickPower(), target: 100, unit: 'Power' },
+            { id: 'm21', icon: '🔮', name: 'Reality Manipulator', desc: 'Own 1 Reality Bender', current: () => gameData.upgrades[9].count, target: 1, unit: 'Owned' },
+            { id: 'm22', icon: '💰', name: 'Stardust Billionaire', desc: 'Earn 1,000,000 total Stardust', current: () => Math.floor(gameData.totalEarned), target: 1000000, unit: 'Stardust' },
+            { id: 'm23', icon: '⚙️', name: 'Industrialist', desc: 'Own 50 total Upgrades', current: () => getTotalUpgrades(), target: 50, unit: 'Upgrades' },
+            { id: 'm24', icon: '⚡', name: 'Laser Master', desc: 'Own 25 Laser Beams', current: () => gameData.upgrades[0].count, target: 25, unit: 'Owned' },
+            { id: 'm25', icon: '🚀', name: 'Fleet Command', desc: 'Reach 10,000 Stardust / sec', current: () => getCPS(), target: 10000, unit: '/sec' },
+            { id: 'm26', icon: '👆', name: 'Finger of God', desc: 'Click 1,000 times', current: () => gameData.totalClicks, target: 1000, unit: 'Clicks' },
+            { id: 'm27', icon: '🏆', name: 'Tycoon', desc: 'Own 100 total Upgrades', current: () => getTotalUpgrades(), target: 100, unit: 'Upgrades' },
+            { id: 'm28', icon: '🌌', name: 'Cosmic Overlord', desc: 'Reach 100,000 Stardust / sec', current: () => getCPS(), target: 100000, unit: '/sec' },
+            { id: 'm29', icon: '✨', name: 'Universal Wealth', desc: 'Earn 10,000,000 total Stardust', current: () => Math.floor(gameData.totalEarned), target: 10000000, unit: 'Stardust' },
+            { id: 'm30', icon: '👑', name: 'Cosmic God', desc: 'Unlock 25 other milestones', current: () => gameData.unlockedMilestones.length, target: 25, unit: 'Milestones' }
+        ];
+
+        function getTotalUpgrades() {
+            return gameData.upgrades.reduce((a, b) => a + b.count, 0);
+        }
+
+        let selectedAvatarTemp = '🚀';
+
+        function switchTab(tab) {
+            document.getElementById('tab-upgrades').classList.remove('active');
+            document.getElementById('tab-milestones').classList.remove('active');
+            
+            if (tab === 'upgrades') {
+                document.getElementById('tab-upgrades').classList.add('active');
+                document.getElementById('shop-tab').style.display = 'flex';
+                document.getElementById('milestones-tab').style.display = 'none';
+                document.getElementById('buy-mode-container').style.display = 'flex';
+            } else {
+                document.getElementById('tab-milestones').classList.add('active');
+                document.getElementById('shop-tab').style.display = 'none';
+                document.getElementById('milestones-tab').style.display = 'flex';
+                document.getElementById('buy-mode-container').style.display = 'none';
+                renderMilestones();
+            }
+        }
+
+        function checkMilestones() {
+            MILESTONES.forEach(ms => {
+                if (!gameData.unlockedMilestones.includes(ms.id) && ms.current() >= ms.target) {
+                    gameData.unlockedMilestones.push(ms.id);
+                }
+            });
+            document.getElementById('ms-unlocked-count').textContent = gameData.unlockedMilestones.length;
+            if (document.getElementById('milestones-tab').style.display === 'flex') {
+                renderMilestones();
+            }
+        }
+
+        function renderMilestones() {
+            let container = document.getElementById('milestones-tab');
+            container.innerHTML = '';
+
+            MILESTONES.forEach(ms => {
+                let unlocked = gameData.unlockedMilestones.includes(ms.id);
+                let currentVal = Math.min(ms.current(), ms.target);
+                let pct = Math.min(100, (currentVal / ms.target) * 100);
+
+                let card = document.createElement('div');
+                card.className = `milestone-card ${unlocked ? 'unlocked' : ''}`;
+                card.innerHTML = `
+                    <div class="ms-top-row">
+                        <div class="ms-left">
+                            <div class="ms-icon">${ms.icon}</div>
+                            <div class="ms-details">
+                                <h4>${ms.name}</h4>
+                                <p>${ms.desc}</p>
+                            </div>
+                        </div>
+                        <div class="ms-badge">${unlocked ? 'UNLOCKED ✨' : 'LOCKED 🔒'}</div>
+                    </div>
+                    <div class="ms-progress-container">
+                        <div class="ms-progress-text">
+                            <span>Progress</span>
+                            <span>${currentVal.toLocaleString()} / ${ms.target.toLocaleString()} ${ms.unit} (${Math.floor(pct)}%)</span>
+                        </div>
+                        <div class="ms-progress-bar-bg">
+                            <div class="ms-progress-bar-fill" style="width: ${pct}%;"></div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function checkFirstTime() {
+            let saved = localStorage.getItem('cosmic_clicker_deluxe_save');
+            if (!saved) {
+                document.getElementById('profile-modal').style.display = 'flex';
+            }
+        }
+
+        function selectAvatar(avatar, el) {
+            selectedAvatarTemp = avatar;
+            document.querySelectorAll('.pfp-option').forEach(opt => opt.classList.remove('selected'));
+            el.classList.add('selected');
+        }
+
+        function saveProfile() {
+            let nameInput = document.getElementById('username-input').value.trim();
+            if (nameInput) {
+                gameData.username = nameInput.substring(0, 15);
+            }
+            gameData.avatar = selectedAvatarTemp;
+            document.getElementById('profile-modal').style.display = 'none';
+            updateUI();
+            syncToGlobalLeaderboard();
+        }
+
+        function openProfileModal() {
+            document.getElementById('username-input').value = gameData.username;
+            document.getElementById('profile-modal').style.display = 'flex';
+        }
+
+        function syncToGlobalLeaderboard() {
+            if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
+                firebase.database().ref('leaderboard/' + gameData.playerId).set({
+                    username: gameData.username,
+                    avatar: gameData.avatar,
+                    score: Math.floor(gameData.totalEarned)
+                });
+            }
+        }
+
+        function listenToGlobalLeaderboard() {
+            if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
+                firebase.database().ref('leaderboard').orderByChild('score').limitToLast(20).on('value', (snapshot) => {
+                    let listEl = document.getElementById('leaderboard-list');
+                    listEl.innerHTML = '';
+
+                    let players = [];
+                    snapshot.forEach((child) => {
+                        players.push({ id: child.key, ...child.val() });
+                    });
+
+                    players.reverse();
+
+                    players.forEach((p, idx) => {
+                        let isUser = p.id === gameData.playerId;
+                        let card = document.createElement('div');
+                        card.className = `lb-card ${isUser ? 'is-user' : ''}`;
+                        card.innerHTML = `
+                            <div style="display: flex; align-items: center; gap: 14px; flex: 1;">
+                                <span class="lb-rank">#${idx + 1}</span>
+                                <div class="lb-player-info">
+                                    <div class="lb-avatar">${p.avatar || '🚀'}</div>
+                                    <div class="lb-details">
+                                        <h4>${p.username} ${isUser ? '(You)' : ''}</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="lb-score">${(p.score || 0).toLocaleString()} ✨</div>
+                        `;
+                        listEl.appendChild(card);
+                    });
+                });
+            } else {
+                document.getElementById('leaderboard-list').innerHTML = `
+                    <div style="text-align: center; color: #8a8fbf; font-size: 0.88rem; padding: 25px;">
+                        Connect Firebase API keys above to load live real players globally!
+                    </div>
+                `;
+            }
+        }
+
+        function harvestStardust(e) {
+            let power = getClickPower();
+            let isCrit = Math.random() < 0.10;
+
+            if (isCrit) {
+                power *= 5;
+                playSound('crit');
+                spawnParticles(e.clientX, e.clientY, '#ffd700', 28);
+                spawnFloatingText(`CRIT! +${power}`, e, true);
+                triggerShake();
+            } else {
+                playSound('click');
+                spawnParticles(e.clientX, e.clientY, '#00ffcc', 16);
+                spawnFloatingText(`+${power}`, e, false);
+            }
+
+            gameData.score += power;
+            gameData.totalEarned += power;
+            gameData.totalClicks++;
+            checkMilestones();
+            updateUI();
+        }
+
+        function triggerShake() {
+            const container = document.getElementById('game-container');
+            container.classList.add('shake');
+            setTimeout(() => container.classList.remove('shake'), 150);
+        }
+
+        function spawnFloatingText(text, event, isCrit) {
+            const floatEl = document.createElement('div');
+            floatEl.className = `float-text ${isCrit ? 'crit' : ''}`;
+            floatEl.textContent = text;
+
+            const btnWrapper = document.getElementById('btn-wrapper');
+            const rect = btnWrapper.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            floatEl.style.left = `${x}px`;
+            floatEl.style.top = `${y}px`;
+
+            btnWrapper.appendChild(floatEl);
+            setTimeout(() => floatEl.remove(), 800);
+        }
+
+        function getBulkInfo(up, mode, currentScore) {
+            let tempCost = up.cost;
+            let totalCost = 0;
+            let countToBuy = 0;
+
+            if (typeof mode === 'number') {
+                for (let i = 0; i < mode; i++) {
+                    totalCost += tempCost;
+                    tempCost = Math.floor(tempCost * up.mult);
+                }
+                countToBuy = mode;
+            } else if (mode === 'max') {
+                while (currentScore >= totalCost + tempCost) {
+                    totalCost += tempCost;
+                    tempCost = Math.floor(tempCost * up.mult);
+                    countToBuy++;
+                }
+                if (countToBuy === 0) {
+                    totalCost = up.cost;
+                    countToBuy = 1;
+                }
+            }
+            return { totalCost, countToBuy };
+        }
+
+        function setBuyMode(mode) {
+            gameData.buyMode = mode;
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`mode-${mode}`).classList.add('active');
+            updateUI();
+        }
+
+        function getClickPower() {
+            return 1 + (gameData.upgrades[0].count * gameData.upgrades[0].power);
+        }
+
+        function getCPS() {
+            let total = 0;
+            for (let i = 1; i < gameData.upgrades.length; i++) {
+                total += gameData.upgrades[i].count * gameData.upgrades[i].power;
+            }
+            return total;
+        }
+
+        function buyUpgrade(index) {
+            let up = gameData.upgrades[index];
+            let { totalCost, countToBuy } = getBulkInfo(up, gameData.buyMode, gameData.score);
+
+            if (gameData.score >= totalCost) {
+                playSound('buy');
+                gameData.score -= totalCost;
+                up.count += countToBuy;
+                for (let i = 0; i < countToBuy; i++) {
+                    up.cost = Math.floor(up.cost * up.mult);
+                }
+                checkMilestones();
+                updateUI();
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('score').textContent = Math.floor(gameData.score).toLocaleString();
+            document.getElementById('cps').textContent = getCPS().toLocaleString();
+            document.getElementById('cpc').textContent = getClickPower().toLocaleString();
+
+            document.getElementById('display-username').textContent = gameData.username;
+            document.getElementById('display-avatar').textContent = gameData.avatar;
+
+            for (let i = 0; i < gameData.upgrades.length; i++) {
+                let up = gameData.upgrades[i];
+                let { totalCost, countToBuy } = getBulkInfo(up, gameData.buyMode, gameData.score);
+
+                document.getElementById(`u${i}-cost`).textContent = totalCost.toLocaleString();
+                document.getElementById(`u${i}-qty`).textContent = `${countToBuy}x`;
+
+                if (!up.isClick) {
+                    document.getElementById(`u${i}-count`).textContent = up.count;
+                }
+
+                document.getElementById(`buy-u${i}`).disabled = gameData.score < totalCost || countToBuy === 0;
+
+                let pct = Math.min(100, (gameData.score / totalCost) * 100);
+                document.getElementById(`p${i}`).style.width = `${pct}%`;
+            }
+
+            checkMilestones();
+        }
+
+        setInterval(function() {
+            let cps = getCPS();
+            if (cps > 0) {
+                gameData.score += cps;
+                gameData.totalEarned += cps;
+                checkMilestones();
+                updateUI();
+            }
+        }, 1000);
+
+        setInterval(syncToGlobalLeaderboard, 10000);
+
+        function saveGame() {
+            localStorage.setItem('cosmic_clicker_deluxe_save', JSON.stringify(gameData));
+            syncToGlobalLeaderboard();
+            alert('Game Saved & Synced Online!');
+        }
+
+        function loadGame() {
+            let saved = localStorage.getItem('cosmic_clicker_deluxe_save');
+            if (saved) {
+                let parsed = JSON.parse(saved);
+                gameData = { ...gameData, ...parsed };
+                if (!gameData.unlockedMilestones) gameData.unlockedMilestones = [];
+                if (!gameData.totalClicks) gameData.totalClicks = 0;
+            }
+        }
+
+        function resetGame() {
+            if (confirm('Are you sure you want to wipe all progress?')) {
+                localStorage.removeItem('cosmic_clicker_deluxe_save');
+                location.reload();
+            }
+        }
+
+        loadGame();
+        checkFirstTime();
+        setBuyMode(gameData.buyMode || 1);
+        checkMilestones();
+        updateUI();
+        listenToGlobalLeaderboard();
+    </script>
+</body>
+</html>
