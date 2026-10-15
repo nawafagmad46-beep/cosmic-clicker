@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cosmic Clicker Deluxe</title>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #06070b;
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .shake { animation: shake 0.15s ease-in-out; }
+        @keyframes shake {
+            0% { transform: translate(0, 0); }
+            25% { transform: translate(-3px, 3px); }
+            50% { transform: translate(3px, -3px); }
+            75% { transform: translate(-2px, -2px); }
+            100% { transform: translate(0, 0); }
+        }
+
+        .game-container {
+            width: 100%;
+            max-width: 1300px;
+            background: #0f111a;
+            border: 1px solid #1a2238;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 0 35px rgba(0, 255, 204, 0.08), 0 0 100px rgba(10, 15, 30, 0.8);
+            display: grid;
+            grid-template-columns: 360px 1fr 340px;
+            gap: 20px;
+            position: relative;
+            z-index: 2;
+        }
+
+        @media (max-width: 1100px) {
+            .game-container { grid-template-columns: 1fr; }
+        }
+
+        #particle-canvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        #youtube-audio-container {
+            position: absolute;
+            left: -9999px;
+            top: -9999px;
+        }
+
+        .audio-controls-panel {
+            width: 100%;
+            background: #141724;
+            border: 1px solid #1c2236;
+            border-radius: 12px;
+            padding: 12px;
+            margin-top: 15px;
+        }
+
+        .audio-controls-panel h4 {
+            margin: 0 0 10px 0;
+            font-size: 0.85rem;
+            color: #00ffcc;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .setting-group {
+            margin-bottom: 8px;
+        }
+
+        .setting-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .setting-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: #8a8fbf;
+            margin-bottom: 3px;
+        }
+
+        .setting-group input[type="range"] {
+            width: 100%;
+            accent-color: #00ffcc;
+            cursor: pointer;
+        }
+
+        #profile-modal {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: rgba(6, 7, 11, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        }
+
+        .modal-card {
+            background: #161927;
+            border: 1px solid #00ffcc;
+            border-radius: 16px;
+            padding: 30px;
+            width: 400px;
+            text-align: center;
+            box-shadow: 0 0 25px rgba(0, 255, 204, 0.2);
+        }
+
+        .modal-card h2 { margin-top: 0; color: #00ffcc; }
+
+        .modal-card input {
+            width: 100%;
+            padding: 10px;
+            background: #0b0d14;
+            border: 1px solid #2a2e45;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 1rem;
+            margin: 15px 0;
+            outline: none;
+            text-align: center;
+        }
+
+        .modal-card input:focus { border-color: #00ffcc; }
+
+        .pfp-selector {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .pfp-option {
+            width: 45px; height: 45px;
+            border-radius: 50%;
+            border: 2px solid #2a2e45;
+            background: #0b0d14;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.3rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .pfp-option.selected {
+            border-color: #00ffcc;
+            box-shadow: 0 0 10px rgba(0, 255, 204, 0.4);
+            transform: scale(1.1);
+        }
+
+        .modal-btn {
+            background: #00ffcc;
+            color: #06070b;
+            border: none;
+            padding: 10px 20px;
+            font-weight: bold;
+            font-size: 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            transition: 0.2s;
+        }
+
+        .modal-btn:hover {
+            background: #33ffdd;
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.4);
+        }
+
+        .left-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border-right: 1px solid #1a2033;
+            padding-right: 20px;
+        }
+
+        @media (max-width: 1100px) {
+            .left-column {
+                border-right: none;
+                border-bottom: 1px solid #1a2033;
+                padding-right: 0; padding-bottom: 20px;
+            }
+        }
+
+        .player-profile {
+            width: 100%;
+            background: #141724;
+            border: 1px solid #22283e;
+            border-radius: 12px;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .profile-info { display: flex; align-items: center; gap: 12px; }
+
+        .profile-avatar {
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            background: #0b0d14;
+            border: 1px solid #00ffcc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2rem;
+        }
+
+        .profile-text h4 { margin: 0; font-size: 0.95rem; color: #fff; }
+        .profile-text span { font-size: 0.75rem; color: #8a8fbf; }
+
+        .edit-profile-btn {
+            background: transparent;
+            border: 1px solid #2a2e45;
+            color: #8a8fbf;
+            padding: 4px 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: 0.2s;
+        }
+
+        .edit-profile-btn:hover { border-color: #00ffcc; color: #00ffcc; }
+
+        .stats-display { text-align: center; margin-bottom: 10px; }
+
+        .stats-display h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            color: #00ffcc;
+            text-shadow: 0 0 12px rgba(0, 255, 204, 0.35);
+        }
+
+        .sub-stats { color: #8a8fbf; font-size: 0.85rem; margin-top: 4px; }
+
+        .multiplier-badge {
+            margin-top: 6px;
+            background: rgba(255, 215, 0, 0.08);
+            border: 1px solid rgba(255, 215, 0, 0.6);
+            color: #ffd700;
+            padding: 3px 10px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            display: inline-block;
+        }
+
+        .click-btn-wrapper {
+            position: relative;
+            margin: 20px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* DYNAMIC HUD ASCENSION SKINS (Inspired by Reference) */
+        #click-btn {
+            width: 170px; height: 190px;
+            background: radial-gradient(circle, #0b1329 0%, #05070f 100%);
+            border: none;
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+            cursor: pointer;
+            outline: none;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: transform 0.08s ease;
+            box-shadow: inset 0 0 25px rgba(0, 255, 204, 0.2);
+        }
+
+        .hex-border {
+            position: relative;
+            padding: 3px;
+            background: linear-gradient(135deg, #00ffcc, #0066ff);
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        /* Tier 1+ HUD Skin: Nested Inner Hexagon & Telemetry Lines */
+        .hex-border.skin-1 {
+            background: linear-gradient(135deg, #00bfff, #9400d3);
+            box-shadow: 0 0 30px rgba(0, 191, 255, 0.5);
+        }
+        .hex-border.skin-1 #click-btn {
+            background: radial-gradient(circle, #150b29 0%, #07040f 100%);
+        }
+        .hex-border.skin-1 span { color: #00bfff; text-shadow: 0 0 10px #00bfff; }
+
+        /* Tier 2+ HUD Skin: Ultimate Quantum Gold Skin */
+        .hex-border.skin-2 {
+            background: linear-gradient(135deg, #ffd700, #ff4500);
+            box-shadow: 0 0 40px rgba(255, 215, 0, 0.7);
+        }
+        .hex-border.skin-2 #click-btn {
+            background: radial-gradient(circle, #291a0b 0%, #0f0804 100%);
+        }
+        .hex-border.skin-2 span { color: #ffd700; text-shadow: 0 0 12px #ffd700; }
+
+        .hex-border:hover { transform: scale(1.03); }
+        .hex-border:active { transform: scale(0.96); }
+
+        #click-btn span {
+            color: #00ffcc;
+            font-weight: 900;
+            font-size: 1.1rem;
+            letter-spacing: 1px;
+            text-shadow: 0 0 8px rgba(0, 255, 204, 0.5);
+        }
+
+        #click-btn small {
+            color: #8a8fbf;
+            font-size: 0.65rem;
+            margin-top: 4px;
+            text-transform: uppercase;
+        }
+
+        .hud-ring {
+            position: absolute;
+            top: 6px; left: 6px; right: 6px; bottom: 6px;
+            border: 1px dashed rgba(0, 255, 204, 0.3);
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+            pointer-events: none;
+            animation: spinHud 20s linear infinite;
+        }
+
+        @keyframes spinHud {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .float-text {
+            position: absolute;
+            color: #00ffcc;
+            font-weight: 900;
+            font-size: 1.2rem;
+            pointer-events: none;
+            animation: floatUp 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+            text-shadow: 0 0 8px #00ffcc;
+            z-index: 100;
+        }
+
+        .float-text.crit {
+            color: #ffd700;
+            font-size: 1.8rem;
+            text-shadow: 0 0 12px #ffd700;
+        }
+
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-45px) scale(1.3); }
+        }
+
+        .meteor {
+            position: fixed;
+            width: 45px; height: 45px;
+            background: radial-gradient(circle, #fff, #ffd700);
+            border-radius: 50%;
+            box-shadow: 0 0 20px #ffd700, 0 0 40px #ff7700;
+            cursor: pointer;
+            z-index: 1000;
+            animation: flyMeteor 6s linear forwards;
+        }
+
+        @keyframes flyMeteor {
+            0% { top: -80px; left: -80px; transform: scale(1); }
+            100% { top: 110vh; left: 110vw; transform: scale(1.2); }
+        }
+
+        .prestige-panel {
+            width: 100%;
+            background: #141724;
+            border: 1px solid rgba(255, 215, 0, 0.5);
+            border-radius: 12px;
+            padding: 12px;
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .prestige-panel h3 { margin: 0 0 4px 0; color: #ffd700; font-size: 1rem; }
+        .prestige-panel p { margin: 0 0 8px 0; font-size: 0.78rem; color: #8a8fbf; }
+
+        #prestige-btn {
+            background: #ffd700;
+            color: #06070b;
+            border: none;
+            border-radius: 6px;
+            padding: 7px 14px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            font-size: 0.85rem;
+            transition: 0.2s;
+        }
+
+        #prestige-btn:disabled { background: #23273a; color: #5a5f7d; cursor: not-allowed; }
+        #prestige-btn:hover:not(:disabled) {
+            background: #ffea75;
+            box-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
+        }
+
+        .controls { margin-top: 15px; display: flex; gap: 10px; width: 100%; }
+
+        .control-btn {
+            flex: 1;
+            background: transparent;
+            border: 1px solid #22283e;
+            color: #8a8fbf;
+            padding: 7px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s ease;
+        }
+
+        .control-btn:hover { border-color: #00ffcc; color: #ffffff; }
+        .control-btn.reset:hover { border-color: #ff4a4a; color: #ff4a4a; }
+
+        .middle-column {
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #1a2033;
+            padding-right: 20px;
+        }
+
+        @media (max-width: 1100px) {
+            .middle-column {
+                border-right: none;
+                border-bottom: 1px solid #1a2033;
+                padding-right: 0; padding-bottom: 20px;
+            }
+        }
+
+        .shop-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #1a2033;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+        }
+
+        .shop-header h2 { margin: 0; font-size: 1.3rem; color: #ffffff; }
+
+        .buy-mode-group {
+            display: flex;
+            background: #141724;
+            border: 1px solid #22283e;
+            border-radius: 8px;
+            padding: 3px;
+            gap: 4px;
+        }
+
+        .mode-btn {
+            background: transparent;
+            color: #8a8fbf;
+            border: none;
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mode-btn.active {
+            background: #00ffcc;
+            color: #06070b;
+            box-shadow: 0 0 8px rgba(0, 255, 204, 0.3);
+        }
+
+        .shop-section {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 540px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .shop-section::-webkit-scrollbar { width: 4px; }
+        .shop-section::-webkit-scrollbar-thumb { background: #22283e; border-radius: 3px; }
+
+        .upgrade-card {
+            background: #121522;
+            border: 1px solid #1c2236;
+            border-radius: 12px;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.2s ease;
+        }
+
+        .upgrade-card:hover {
+            border-color: rgba(0, 255, 204, 0.6);
+            background: #161a2b;
+            box-shadow: 0 0 12px rgba(0, 255, 204, 0.15);
+            transform: translateY(-1px);
+        }
+
+        .card-progress {
+            position: absolute;
+            bottom: 0; left: 0;
+            height: 2px;
+            background: #00ffcc;
+            width: 0%;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 4px rgba(0, 255, 204, 0.5);
+            opacity: 0.8;
+        }
+
+        .upgrade-info h3 { margin: 0 0 3px 0; font-size: 0.95rem; color: #ffffff; }
+        .upgrade-info p { margin: 0; font-size: 0.78rem; color: #8a8fbf; }
+
+        .upgrade-btn {
+            background: #00ffcc;
+            color: #06070b;
+            border: none;
+            border-radius: 8px;
+            padding: 7px 14px;
+            font-weight: bold;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: 0.2s;
+            white-space: nowrap;
+            z-index: 2;
+        }
+
+        .upgrade-btn:hover:not(:disabled) {
+            background: #33ffdd;
+            box-shadow: 0 0 10px rgba(0, 255, 204, 0.4);
+            transform: scale(1.03);
+        }
+
+        .upgrade-btn:disabled {
+            background: #1d2133;
+            color: #4a506b;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .right-column { display: flex; flex-direction: column; }
+
+        .leaderboard-header {
+            border-bottom: 1px solid #1a2033;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .leaderboard-header h3 { margin: 0; font-size: 1.2rem; color: #ffd700; }
+
+        .leaderboard-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 520px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .leaderboard-list::-webkit-scrollbar { width: 4px; }
+        .leaderboard-list::-webkit-scrollbar-thumb { background: #22283e; border-radius: 2px; }
+
+        .lb-card {
+            background: #121522;
+            border: 1px solid #1c2236;
+            border-radius: 10px;
+            padding: 10px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: 0.2s;
+        }
+
+        .lb-card.is-user {
+            border-color: rgba(0, 255, 204, 0.6);
+            background: rgba(0, 255, 204, 0.03);
+        }
+
+        .lb-rank {
+            font-weight: bold;
+            font-size: 0.9rem;
+            width: 28px;
+            color: #8a8fbf;
+        }
+
+        .lb-card:nth-child(1) .lb-rank { color: #ffd700; }
+        .lb-card:nth-child(2) .lb-rank { color: #c0c0c0; }
+        .lb-card:nth-child(3) .lb-rank { color: #cd7f32; }
+
+        .lb-player-info { display: flex; align-items: center; gap: 10px; flex: 1; }
+
+        .lb-avatar {
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            background: #0b0d14;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1rem;
+            border: 1px solid #22283e;
+        }
+
+        .lb-details h4 { margin: 0; font-size: 0.85rem; color: #fff; }
+        .lb-score { font-weight: bold; font-size: 0.85rem; color: #00ffcc; }
+    </style>
+</head>
+<body id="body">
+
+    <div id="youtube-audio-container">
+        <iframe id="yt-player" width="200" height="200" src="https://www.youtube.com/embed/_4B5Hzuvy_0?enablejsapi=1&autoplay=1&loop=1&playlist=_4B5Hzuvy_0" frameborder="0"></iframe>
+    </div>
+
+    <!-- Profile Setup Modal -->
+    <div id="profile-modal" style="display: none;">
+        <div class="modal-card">
+            <h2>Welcome to Cosmic Clicker</h2>
+            <p style="color: #8a8fbf; font-size: 0.85rem;">Pick your custom name & avatar to compete live on the Global Leaderboard!</p>
+            
+            <div style="text-align: left; font-size: 0.8rem; color: #8a8fbf; margin-bottom: 5px;">Choose Avatar:</div>
+            <div class="pfp-selector">
+                <div class="pfp-option selected" onclick="selectAvatar('🚀', this)">🚀</div>
+                <div class="pfp-option" onclick="selectAvatar('👽', this)">👽</div>
+                <div class="pfp-option" onclick="selectAvatar('🛸', this)">🛸</div>
+                <div class="pfp-option" onclick="selectAvatar('⭐', this)">⭐</div>
+                <div class="pfp-option" onclick="selectAvatar('👾', this)">👾</div>
+            </div>
+
+            <div style="text-align: left; font-size: 0.8rem; color: #8a8fbf; margin-bottom: 5px;">Enter Username (SFW):</div>
+            <input type="text" id="username-input" placeholder="e.g. StarLord" maxlength="15">
+            
+            <button class="modal-btn" onclick="saveProfile()">Start Playing</button>
+        </div>
+    </div>
+
+    <canvas id="particle-canvas"></canvas>
+
+    <div class="game-container" id="game-container">
+        
+        <div class="left-column">
+            <div class="player-profile">
+                <div class="profile-info">
+                    <div class="profile-avatar" id="display-avatar">🚀</div>
+                    <div class="profile-text">
+                        <h4 id="display-username">Explorer</h4>
+                        <span id="display-rank">Live Rankings</span>
+                    </div>
+                </div>
+                <button class="edit-profile-btn" onclick="openProfileModal()">Edit</button>
+            </div>
+
+            <div class="stats-display">
+                <h1 id="score">0</h1>
+                <div class="sub-stats">
+                    <span id="cps">0</span> Stardust / sec &bull; <span id="cpc">1</span> per click
+                </div>
+                <div class="multiplier-badge" id="multiplier-badge">Cosmic Multiplier: x1.0</div>
+            </div>
+
+            <div class="click-btn-wrapper" id="btn-wrapper">
+                <div class="hex-border" id="hex-skin-wrapper">
+                    <div class="hud-ring"></div>
+                    <button id="click-btn" onclick="harvestStardust(event)">
+                        <span>HARVEST</span>
+                        <small>STARDUST</small>
+                    </button>
+                </div>
+            </div>
+
+            <div class="prestige-panel">
+                <h3>Cosmic Ascension</h3>
+                <p>Requirement: 1,000,000 Stardust</p>
+                <button id="prestige-btn" onclick="doPrestige()" disabled>Ascend (+<span id="pending-shards">0</span> Shards)</button>
+            </div>
+
+            <div class="controls">
+                <button class="control-btn" onclick="saveGame()">Save</button>
+                <button class="control-btn reset" onclick="resetGame()">Reset</button>
+            </div>
+
+            <div class="audio-controls-panel">
+                <h4>🔊 Audio Controls</h4>
+                <div class="setting-group">
+                    <label>Master Volume: <span id="vol-master-val">100%</span></label>
+                    <input type="range" id="master-vol" min="0" max="100" value="100" oninput="updateVolumes()">
+                </div>
+                <div class="setting-group">
+                    <label>SFX Volume: <span id="vol-sfx-val">100%</span></label>
+                    <input type="range" id="sfx-vol" min="0" max="100" value="100" oninput="updateVolumes()">
+                </div>
+            </div>
+        </div>
+
+        <div class="middle-column">
+            <div class="shop-header">
+                <h2>Cosmic Upgrades</h2>
+                <div class="buy-mode-group">
+                    <button class="mode-btn active" id="mode-1" onclick="setBuyMode(1)">1x</button>
+                    <button class="mode-btn" id="mode-10" onclick="setBuyMode(10)">10x</button>
+                    <button class="mode-btn" id="mode-100" onclick="setBuyMode(100)">100x</button>
+                    <button class="mode-btn" id="mode-max" onclick="setBuyMode('max')">Max</button>
+                </div>
+            </div>
+
+            <div class="shop-section">
+                <div class="upgrade-card"><div class="card-progress" id="p0"></div><div class="upgrade-info"><h3>1. Laser Beam</h3><p>+1 per click | Cost: <span id="u0-cost">15</span></p></div><button class="upgrade-btn" id="buy-u0" onclick="buyUpgrade(0)">Buy <span id="u0-qty">1x</span></button></div>
+                <div class="upgrade-card"><div class="card-progress" id="p1"></div><div class="upgrade-info"><h3>2. Stardust Drone</h3><p>+1 /s | Owned: <span id="u1-count">0</span> | Cost: <span id="u1-cost">50</span></p></div><button class="upgrade-btn" id="buy-u1" onclick="buyUpgrade(1)">Buy <span id="u1-qty">1x</span></button></div>
+                <div class="upgrade-card"><div class="card-progress" id="p2"></div><div class="upgrade-info"><h3>3. Solar Harvester</h3><p>+5 /s | Owned: <span id="u2-count">0</span> | Cost: <span id="u2-cost">250</span></p></div><button class="upgrade-btn" id="buy-u2" onclick="buyUpgrade(2)">Buy <span id="u2-qty">1x</span></button></div>
+                <div class="upgrade-card"><div class="card-progress" id="p3"></div><div class="upgrade-info"><h3>4. Asteroid Miner</h3><p>+15 /s | Owned: <span id="u3-count">0</span> | Cost: <span id="u3-cost">1200</span></p></div><button class="upgrade-btn" id="buy-u3" onclick="buyUpgrade(3)">Buy <span id="u3-qty">1x</span></button></div>
+                <div class="upgrade-card"><div class="card-progress" id="p4"></div><div class="upgrade-info"><h3>5. Ion Thruster</h3><p>+50 /s | Owned: <span id="u4-count">0</span> | Cost: <span id="u4-cost">5000</span></p></div><button class="upgrade-btn" id="buy-u4" onclick="buyUpgrade(4)">Buy <span id="u4-qty">1x</span></button></div>
+                <div class="upgrade-card"><div class="card-progress" id="p5"></div><div class="upgrade-info"><h3>6. Nebula Collector</h3><p>+200 /s | Owned: <span id="u5-count">0</span> | Cost: <span id="u5-cost">22000</span></p></div><button class="upgrade-btn" id="buy-u5" onclick="buyUpgrade(5)">Buy <span id="u5-qty">1x</span></button></div>
+                <div class="upgrade-card"><div class="card-progress" id="p6"></div><div class="upgrade-info"><h3>7. Quantum Siphon</h3><p>+1,000 /s | Owned: <span id="u6-count">0</span> | Cost: <span id="u6-cost">100000</span></p></div><button class="upgrade-btn" id="buy-u6" onclick="buyUpgrade(6)">Buy <span id="u6-qty">1x</span></button></div>
+                <div class="upgrade-card"><div class="card-progress" id="p7"></div><div class="upgrade-info"><h3>8. Black Hole Rig</h3><p>+5,000 /s | Owned: <span id="u7-count">0</span> | Cost: <span id="u7-cost">450000</span></p></div><button class="upgrade-btn" id="buy-u7" onclick="buyUpgrade(7)">Buy <span id="u7-qty">1x</span></button></div>
+                <div class="upgrade-card"><div class="card-progress" id="p8"></div><div class="upgrade-info"><h3>9. Galactic Engine</h3><p>+20,000 /s | Owned: <span id="u8-count">0</span> | Cost: <span id="u8-cost">2000000</span></p></div><button class="upgrade-btn" id="buy-u8" onclick="buyUpgrade(8)">Buy <span id="u8-qty">1x</span></button></div>
+                <div class="upgrade-card"><div class="card-progress" id="p9"></div><div class="upgrade-info"><h3>10. Reality Bender</h3><p>+100,000 /s | Owned: <span id="u9-count">0</span> | Cost: <span id="u9-cost">10000000</span></p></div><button class="upgrade-btn" id="buy-u9" onclick="buyUpgrade(9)">Buy <span id="u9-qty">1x</span></button></div>
+            </div>
+        </div>
+
+        <div class="right-column">
+            <div class="leaderboard-header">
+                <h3>🏆 Live Global Players</h3>
+            </div>
+
+            <div class="leaderboard-list" id="leaderboard-list">
+                <!-- Live Firebase Leaderboard -->
+            </div>
+        </div>
+
+    </div>
+
+    <!-- YouTube IFrame API Script -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script>
+        let ytPlayer;
+        let masterVol = 100;
+        let sfxVol = 100;
+
+        function onYouTubeIframeAPIReady() {
+            ytPlayer = new YT.Player('yt-player', {
+                events: {
+                    'onReady': (event) => {
+                        event.target.setVolume(masterVol);
+                        event.target.playVideo();
+                    }
+                }
+            });
+        }
+
+        function updateVolumes() {
+            masterVol = document.getElementById('master-vol').value;
+            sfxVol = document.getElementById('sfx-vol').value;
+
+            document.getElementById('vol-master-val').textContent = `${masterVol}%`;
+            document.getElementById('vol-sfx-val').textContent = `${sfxVol}%`;
+
+            if (ytPlayer && ytPlayer.setVolume) {
+                ytPlayer.setVolume(masterVol);
+            }
+        }
+
+        const firebaseConfig = {
+            apiKey: "YOUR_FIREBASE_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        if (firebaseConfig.apiKey !== "YOUR_FIREBASE_API_KEY") {
+            firebase.initializeApp(firebaseConfig);
+        }
+
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSound(type) {
+            let finalVol = (masterVol / 100) * (sfxVol / 100);
+            if (finalVol <= 0) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'click') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(320, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(650, audioCtx.currentTime + 0.05);
+                gain.gain.setValueAtTime(0.15 * finalVol, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.05);
+            } else if (type === 'crit') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(500, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1300, audioCtx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.25 * finalVol, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+            } else if (type === 'buy') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(450, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(850, audioCtx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.1 * finalVol, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+            }
+        }
+
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function spawnParticles(x, y, color, count = 14) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 9,
+                    vy: (Math.random() - 0.5) * 9,
+                    size: Math.random() * 5 + 2,
+                    color: color,
+                    alpha: 1,
+                    life: 0.03
+                });
+            }
+        }
+
+        function renderParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach((p, index) => {
+                p.x += p.vx; p.y += p.vy;
+                p.alpha -= p.life;
+                ctx.globalAlpha = Math.max(0, p.alpha);
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+                if (p.alpha <= 0) particles.splice(index, 1);
+            });
+            requestAnimationFrame(renderParticles);
+        }
+        renderParticles();
+
+        let gameData = {
+            playerId: 'user_' + Math.random().toString(36).substr(2, 9),
+            username: 'Explorer',
+            avatar: '🚀',
+            score: 0,
+            totalEarned: 0,
+            cosmicShards: 0,
+            buyMode: 1,
+            upgrades: [
+                { count: 0, cost: 15, baseCost: 15, power: 1, isClick: true, mult: 1.5 },
+                { count: 0, cost: 50, baseCost: 50, power: 1, isClick: false, mult: 1.5 },
+                { count: 0, cost: 250, baseCost: 250, power: 5, isClick: false, mult: 1.5 },
+                { count: 0, cost: 1200, baseCost: 1200, power: 15, isClick: false, mult: 1.5 },
+                { count: 0, cost: 5000, baseCost: 5000, power: 50, isClick: false, mult: 1.5 },
+                { count: 0, cost: 22000, baseCost: 22000, power: 200, isClick: false, mult: 1.5 },
+                { count: 0, cost: 100000, baseCost: 100000, power: 1000, isClick: false, mult: 1.5 },
+                { count: 0, cost: 450000, baseCost: 450000, power: 5000, isClick: false, mult: 1.5 },
+                { count: 0, cost: 2000000, baseCost: 2000000, power: 20000, isClick: false, mult: 1.5 },
+                { count: 0, cost: 10000000, baseCost: 10000000, power: 100000, isClick: false, mult: 1.6 }
+            ]
+        };
+
+        let selectedAvatarTemp = '🚀';
+
+        function checkFirstTime() {
+            let saved = localStorage.getItem('cosmic_clicker_deluxe_save');
+            if (!saved) {
+                document.getElementById('profile-modal').style.display = 'flex';
+            }
+        }
+
+        function selectAvatar(avatar, el) {
+            selectedAvatarTemp = avatar;
+            document.querySelectorAll('.pfp-option').forEach(opt => opt.classList.remove('selected'));
+            el.classList.add('selected');
+        }
+
+        function saveProfile() {
+            let nameInput = document.getElementById('username-input').value.trim();
+            if (nameInput) {
+                gameData.username = nameInput.substring(0, 15);
+            }
+            gameData.avatar = selectedAvatarTemp;
+            document.getElementById('profile-modal').style.display = 'none';
+            updateUI();
+            syncToGlobalLeaderboard();
+        }
+
+        function openProfileModal() {
+            document.getElementById('username-input').value = gameData.username;
+            document.getElementById('profile-modal').style.display = 'flex';
+        }
+
+        function syncToGlobalLeaderboard() {
+            if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
+                firebase.database().ref('leaderboard/' + gameData.playerId).set({
+                    username: gameData.username,
+                    avatar: gameData.avatar,
+                    score: Math.floor(gameData.totalEarned),
+                    shards: gameData.cosmicShards
+                });
+            }
+        }
+
+        function listenToGlobalLeaderboard() {
+            if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
+                firebase.database().ref('leaderboard').orderByChild('score').limitToLast(20).on('value', (snapshot) => {
+                    let listEl = document.getElementById('leaderboard-list');
+                    listEl.innerHTML = '';
+
+                    let players = [];
+                    snapshot.forEach((child) => {
+                        players.push({ id: child.key, ...child.val() });
+                    });
+
+                    players.reverse();
+
+                    players.forEach((p, idx) => {
+                        let isUser = p.id === gameData.playerId;
+                        let card = document.createElement('div');
+                        card.className = `lb-card ${isUser ? 'is-user' : ''}`;
+                        card.innerHTML = `
+                            <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+                                <span class="lb-rank">#${idx + 1}</span>
+                                <div class="lb-player-info">
+                                    <div class="lb-avatar">${p.avatar || '🚀'}</div>
+                                    <div class="lb-details">
+                                        <h4>${p.username} ${isUser ? '(You)' : ''}</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="lb-score">${(p.score || 0).toLocaleString()} ✨</div>
+                        `;
+                        listEl.appendChild(card);
+                    });
+                });
+            } else {
+                document.getElementById('leaderboard-list').innerHTML = `
+                    <div style="text-align: center; color: #8a8fbf; font-size: 0.85rem; padding: 20px;">
+                        Connect Firebase API keys above to load live real players globally!
+                    </div>
+                `;
+            }
+        }
+
+        function harvestStardust(e) {
+            let power = getClickPower();
+            let isCrit = Math.random() < 0.10;
+
+            if (isCrit) {
+                power *= 5;
+                playSound('crit');
+                spawnParticles(e.clientX, e.clientY, '#ffd700', 25);
+                spawnFloatingText(`CRIT! +${power}`, e, true);
+                triggerShake();
+            } else {
+                playSound('click');
+                spawnParticles(e.clientX, e.clientY, '#00ffcc', 14);
+                spawnFloatingText(`+${power}`, e, false);
+            }
+
+            gameData.score += power;
+            gameData.totalEarned += power;
+            updateUI();
+        }
+
+        function triggerShake() {
+            const container = document.getElementById('game-container');
+            container.classList.add('shake');
+            setTimeout(() => container.classList.remove('shake'), 150);
+        }
+
+        function spawnFloatingText(text, event, isCrit) {
+            const floatEl = document.createElement('div');
+            floatEl.className = `float-text ${isCrit ? 'crit' : ''}`;
+            floatEl.textContent = text;
+
+            const btnWrapper = document.getElementById('btn-wrapper');
+            const rect = btnWrapper.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            floatEl.style.left = `${x}px`;
+            floatEl.style.top = `${y}px`;
+
+            btnWrapper.appendChild(floatEl);
+            setTimeout(() => floatEl.remove(), 800);
+        }
+
+        function getBulkInfo(up, mode, currentScore) {
+            let tempCost = up.cost;
+            let totalCost = 0;
+            let countToBuy = 0;
+
+            if (typeof mode === 'number') {
+                for (let i = 0; i < mode; i++) {
+                    totalCost += tempCost;
+                    tempCost = Math.floor(tempCost * up.mult);
+                }
+                countToBuy = mode;
+            } else if (mode === 'max') {
+                while (currentScore >= totalCost + tempCost) {
+                    totalCost += tempCost;
+                    tempCost = Math.floor(tempCost * up.mult);
+                    countToBuy++;
+                }
+                if (countToBuy === 0) {
+                    totalCost = up.cost;
+                    countToBuy = 1;
+                }
+            }
+            return { totalCost, countToBuy };
+        }
+
+        function setBuyMode(mode) {
+            gameData.buyMode = mode;
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`mode-${mode}`).classList.add('active');
+            updateUI();
+        }
+
+        function getClickPower() {
+            let base = 1 + (gameData.upgrades[0].count * gameData.upgrades[0].power);
+            let shardMultiplier = 1 + (gameData.cosmicShards * 0.5);
+            return Math.floor(base * shardMultiplier);
+        }
+
+        function getCPS() {
+            let total = 0;
+            for (let i = 1; i < gameData.upgrades.length; i++) {
+                total += gameData.upgrades[i].count * gameData.upgrades[i].power;
+            }
+            let shardMultiplier = 1 + (gameData.cosmicShards * 0.5);
+            return Math.floor(total * shardMultiplier);
+        }
+
+        function buyUpgrade(index) {
+            let up = gameData.upgrades[index];
+            let { totalCost, countToBuy } = getBulkInfo(up, gameData.buyMode, gameData.score);
+
+            if (gameData.score >= totalCost) {
+                playSound('buy');
+                gameData.score -= totalCost;
+                up.count += countToBuy;
+                for (let i = 0; i < countToBuy; i++) {
+                    up.cost = Math.floor(up.cost * up.mult);
+                }
+                updateUI();
+            }
+        }
+
+        function doPrestige() {
+            let earnedShards = Math.floor(Math.sqrt(gameData.score / 100000));
+            if (earnedShards < 1) earnedShards = 1;
+
+            if (confirm(`Are you ready to Ascend? You will reset your score and upgrades, but gain +${earnedShards} Cosmic Shards!`)) {
+                gameData.cosmicShards += earnedShards;
+                gameData.score = 0;
+                gameData.upgrades.forEach(u => {
+                    u.count = 0;
+                    u.cost = u.baseCost;
+                });
+                updateButtonSkin();
+                updateUI();
+                syncToGlobalLeaderboard();
+            }
+        }
+
+        function updateButtonSkin() {
+            let skinWrapper = document.getElementById('hex-skin-wrapper');
+            skinWrapper.className = 'hex-border'; // reset
+            if (gameData.cosmicShards >= 5) {
+                skinWrapper.classList.add('skin-2'); // Ultimate Gold HUD
+            } else if (gameData.cosmicShards >= 1) {
+                skinWrapper.classList.add('skin-1'); // Cyber Blue HUD
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('score').textContent = Math.floor(gameData.score).toLocaleString();
+            document.getElementById('cps').textContent = getCPS().toLocaleString();
+            document.getElementById('cpc').textContent = getClickPower().toLocaleString();
+
+            document.getElementById('display-username').textContent = gameData.username;
+            document.getElementById('display-avatar').textContent = gameData.avatar;
+
+            let mult = (1 + (gameData.cosmicShards * 0.5)).toFixed(1);
+            document.getElementById('multiplier-badge').textContent = `Cosmic Multiplier: x${mult} (Shards: ${gameData.cosmicShards})`;
+
+            let potentialShards = Math.max(0, Math.floor(Math.sqrt(gameData.score / 100000)));
+            document.getElementById('pending-shards').textContent = potentialShards;
+            document.getElementById('prestige-btn').disabled = gameData.score < 1000000;
+
+            updateButtonSkin();
+
+            for (let i = 0; i < gameData.upgrades.length; i++) {
+                let up = gameData.upgrades[i];
+                let { totalCost, countToBuy } = getBulkInfo(up, gameData.buyMode, gameData.score);
+
+                document.getElementById(`u${i}-cost`).textContent = totalCost.toLocaleString();
+                document.getElementById(`u${i}-qty`).textContent = `${countToBuy}x`;
+
+                if (!up.isClick) {
+                    document.getElementById(`u${i}-count`).textContent = up.count;
+                }
+
+                document.getElementById(`buy-u${i}`).disabled = gameData.score < totalCost || countToBuy === 0;
+
+                let pct = Math.min(100, (gameData.score / totalCost) * 100);
+                document.getElementById(`p${i}`).style.width = `${pct}%`;
+            }
+        }
+
+        setInterval(function() {
+            let cps = getCPS();
+            if (cps > 0) {
+                gameData.score += cps;
+                gameData.totalEarned += cps;
+                updateUI();
+            }
+        }, 1000);
+
+        setInterval(syncToGlobalLeaderboard, 10000);
+
+        function saveGame() {
+            localStorage.setItem('cosmic_clicker_deluxe_save', JSON.stringify(gameData));
+            syncToGlobalLeaderboard();
+            alert('Game Saved & Synced Online!');
+        }
+
+        function loadGame() {
+            let saved = localStorage.getItem('cosmic_clicker_deluxe_save');
+            if (saved) {
+                let parsed = JSON.parse(saved);
+                gameData = { ...gameData, ...parsed };
+            }
+        }
+
+        function resetGame() {
+            if (confirm('Are you sure you want to wipe all progress?')) {
+                localStorage.removeItem('cosmic_clicker_deluxe_save');
+                location.reload();
+            }
+        }
+
+        loadGame();
+        checkFirstTime();
+        setBuyMode(gameData.buyMode || 1);
+        updateUI();
+        listenToGlobalLeaderboard();
+    </script>
+</body>
+</html>
